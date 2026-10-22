@@ -1,37 +1,28 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { GameState, Token } from '../../types/game';
 import { LudoEngine } from '../rules/ludoEngine';
-import { SAFE_CELLS, BOARD_COLORS } from '../rules/boardConstants';
-
-interface AnimatedGoti {
-  playerId: string;
-  tokenId: number;
-  currentR: number;
-  currentC: number;
-  targetR: number;
-  targetC: number;
-  jumpArc: number;
-}
+import { BOARD_COLORS } from '../rules/boardConstants';
 
 interface Props {
   gameState: GameState;
   onSelectToken: (tokenId: number) => void;
-  animatingToken?: { playerId: string; tokenId: number; stepPos: number } | null;
+  animatingToken?: { playerId: string; tokenId: number; stepPos: number; arcHeight: number } | null;
 }
 
 export const LudoCanvasBoard: React.FC<Props> = ({ gameState, onSelectToken, animatingToken }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
+  // Exact 52-cell continuous track grid coordinates (row, col)
   const getGridCoordinate = (token: Token): { r: number; c: number } => {
     const path: [number, number][] = [
-      [6,1],[6,2],[6,3],[6,4],[6,5],
-      [5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],
-      [1,8],[2,8],[3,8],[4,8],[5,8],
-      [6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],
-      [8,13],[8,12],[8,11],[8,10],[8,9],
-      [9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],
-      [13,6],[12,6],[11,6],[10,6],[9,6],
-      [8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0]
+      [6, 1], [6, 2], [6, 3], [6, 4], [6, 5],
+      [5, 6], [4, 6], [3, 6], [2, 6], [1, 6], [0, 6], [0, 7], [0, 8],
+      [1, 8], [2, 8], [3, 8], [4, 8], [5, 8],
+      [6, 9], [6, 10], [6, 11], [6, 12], [6, 13], [6, 14], [7, 14], [8, 14],
+      [8, 13], [8, 12], [8, 11], [8, 10], [8, 9],
+      [9, 8], [10, 8], [11, 8], [12, 8], [13, 8], [14, 8], [14, 7], [14, 6],
+      [13, 6], [12, 6], [11, 6], [10, 6], [9, 6],
+      [8, 5], [8, 4], [8, 3], [8, 2], [8, 1], [8, 0], [7, 0], [6, 0]
     ];
 
     if (token.stepPosition >= 0 && token.stepPosition < 51) {
@@ -39,6 +30,7 @@ export const LudoCanvasBoard: React.FC<Props> = ({ gameState, onSelectToken, ani
       return { r: path[gPos][0], c: path[gPos][1] };
     }
 
+    // Home corridors (steps 51 to 56)
     const stepInCorridor = token.stepPosition - 51;
     switch (token.color) {
       case 'RED': return { r: 7, c: 1 + stepInCorridor };
@@ -59,31 +51,29 @@ export const LudoCanvasBoard: React.FC<Props> = ({ gameState, onSelectToken, ani
 
     ctx.clearRect(0, 0, size, size);
 
-    // 1. Draw 4 Yards with glossy borders
+    // 1. Draw 4 Yards
     const drawYard = (x: number, y: number, colorKey: 'RED' | 'GREEN' | 'YELLOW' | 'BLUE') => {
       const c = BOARD_COLORS[colorKey];
-      // Outer colored box
       ctx.fillStyle = c.primary;
       ctx.fillRect(x * cellSize, y * cellSize, 6 * cellSize, 6 * cellSize);
 
-      // Inner white area with rounded bevel
+      // Inner white area
       ctx.fillStyle = '#ffffff';
       ctx.fillRect((x + 1) * cellSize, (y + 1) * cellSize, 4 * cellSize, 4 * cellSize);
 
-      // 4 Base Yard Seats with silver rim
+      // 4 Base seats with silver rims
       const baseCoords = [
         { bx: x + 1.8, by: y + 1.8 },
         { bx: x + 3.2, by: y + 1.8 },
         { bx: x + 1.8, by: y + 3.2 },
-        { bx: x + 3.2, by: y + 3.2 }
+        { bx: x + 3.2, by: y + 3.2 },
       ];
-
-      baseCoords.forEach(pos => {
+      baseCoords.forEach((pos) => {
         ctx.beginPath();
-        ctx.arc(pos.bx * cellSize, pos.by * cellSize, cellSize * 0.45, 0, Math.PI * 2);
+        ctx.arc(pos.bx * cellSize, pos.by * cellSize, cellSize * 0.44, 0, Math.PI * 2);
         ctx.fillStyle = c.light;
         ctx.fill();
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2.5;
         ctx.strokeStyle = '#d1d5db';
         ctx.stroke();
       });
@@ -94,14 +84,14 @@ export const LudoCanvasBoard: React.FC<Props> = ({ gameState, onSelectToken, ani
     drawYard(9, 9, 'YELLOW');
     drawYard(0, 9, 'BLUE');
 
-    // 2. Central Home Triangles
+    // 2. Center Finishing Triangles
     const centerTriangles = [
-      { coords: [[6,6],[7.5,7.5],[6,9]], color: BOARD_COLORS.RED.primary },
-      { coords: [[6,6],[7.5,7.5],[9,6]], color: BOARD_COLORS.GREEN.primary },
-      { coords: [[9,6],[7.5,7.5],[9,9]], color: BOARD_COLORS.YELLOW.primary },
-      { coords: [[6,9],[7.5,7.5],[9,9]], color: BOARD_COLORS.BLUE.primary },
+      { coords: [[6, 6], [7.5, 7.5], [6, 9]], color: BOARD_COLORS.RED.primary },
+      { coords: [[6, 6], [7.5, 7.5], [9, 6]], color: BOARD_COLORS.GREEN.primary },
+      { coords: [[9, 6], [7.5, 7.5], [9, 9]], color: BOARD_COLORS.YELLOW.primary },
+      { coords: [[6, 9], [7.5, 7.5], [9, 9]], color: BOARD_COLORS.BLUE.primary },
     ];
-    centerTriangles.forEach(t => {
+    centerTriangles.forEach((t) => {
       ctx.beginPath();
       ctx.moveTo(t.coords[0][0] * cellSize, t.coords[0][1] * cellSize);
       ctx.lineTo(t.coords[1][0] * cellSize, t.coords[1][1] * cellSize);
@@ -110,7 +100,7 @@ export const LudoCanvasBoard: React.FC<Props> = ({ gameState, onSelectToken, ani
       ctx.fill();
     });
 
-    // 3. Grid Cells & Home Corridors
+    // 3. Main Track Cells & Home Columns
     ctx.strokeStyle = '#cbd5e1';
     ctx.lineWidth = 1.2;
 
@@ -127,7 +117,7 @@ export const LudoCanvasBoard: React.FC<Props> = ({ gameState, onSelectToken, ani
         if (r === 7 && c >= 9 && c <= 13) ctx.fillStyle = BOARD_COLORS.YELLOW.primary;
         if (c === 7 && r >= 9 && r <= 13) ctx.fillStyle = BOARD_COLORS.BLUE.primary;
 
-        // Entry colored squares
+        // Entry cells
         if (r === 6 && c === 1) ctx.fillStyle = BOARD_COLORS.RED.primary;
         if (r === 1 && c === 8) ctx.fillStyle = BOARD_COLORS.GREEN.primary;
         if (r === 8 && c === 13) ctx.fillStyle = BOARD_COLORS.YELLOW.primary;
@@ -138,20 +128,20 @@ export const LudoCanvasBoard: React.FC<Props> = ({ gameState, onSelectToken, ani
       }
     }
 
-    // 4. Safe Stars
+    // 4. Safe Star Cells
     const starCoords = [
       { r: 6, c: 1 }, { r: 2, c: 6 }, { r: 1, c: 8 }, { r: 6, c: 12 },
-      { r: 8, c: 13 }, { r: 12, c: 8 }, { r: 13, c: 6 }, { r: 8, c: 2 }
+      { r: 8, c: 13 }, { r: 12, c: 8 }, { r: 13, c: 6 }, { r: 8, c: 2 },
     ];
     ctx.fillStyle = '#f59e0b';
-    ctx.font = `bold ${cellSize * 0.7}px sans-serif`;
+    ctx.font = `bold ${cellSize * 0.72}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    starCoords.forEach(pos => {
-      ctx.fillText('★', (pos.c + 0.5) * cellSize, (pos.r + 0.53) * cellSize);
+    starCoords.forEach((pos) => {
+      ctx.fillText('★', (pos.c + 0.5) * cellSize, (pos.r + 0.54) * cellSize);
     });
 
-    // 5. Draw Glossy 3D Gotis (Tokens)
+    // 5. Render 3D Tokens with Parabolic Arc
     const activePlayer = gameState.players[gameState.activePlayerIndex];
 
     gameState.players.forEach((player) => {
@@ -160,6 +150,7 @@ export const LudoCanvasBoard: React.FC<Props> = ({ gameState, onSelectToken, ani
 
         let px = 0;
         let py = 0;
+        let jumpOffset = 0;
 
         if (token.stepPosition === -1) {
           const yardOffset = {
@@ -174,19 +165,27 @@ export const LudoCanvasBoard: React.FC<Props> = ({ gameState, onSelectToken, ani
           px = (yardOffset.x + subX) * cellSize;
           py = (yardOffset.y + subY) * cellSize;
         } else {
-          // If this token is currently in middle of hop animation
+          const isAnimatingThis =
+            animatingToken &&
+            animatingToken.tokenId === token.id &&
+            animatingToken.playerId === player.id;
+
           const coords = getGridCoordinate(
-            animatingToken && animatingToken.tokenId === token.id && animatingToken.playerId === player.id
+            isAnimatingThis
               ? { ...token, stepPosition: animatingToken.stepPos }
               : token
           );
           px = (coords.c + 0.5) * cellSize;
           py = (coords.r + 0.5) * cellSize;
+
+          if (isAnimatingThis) {
+            jumpOffset = animatingToken.arcHeight;
+          }
         }
 
         ctx.save();
 
-        // Legal move pulsating halo ring
+        // Legal move halo
         const isLegal =
           player.id === activePlayer.id &&
           gameState.validTokenMoves.includes(token.id);
@@ -201,30 +200,38 @@ export const LudoCanvasBoard: React.FC<Props> = ({ gameState, onSelectToken, ani
           ctx.stroke();
         }
 
-        // Token Drop Shadow
+        // Realistic Drop Shadow
         ctx.beginPath();
-        ctx.arc(px, py + 2.5, cellSize * 0.36, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.arc(px, py + 3, cellSize * 0.36, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.38)';
         ctx.fill();
 
-        // 3D Goti Outer Cone
-        const grad = ctx.createRadialGradient(px - 3, py - 3, 2, px, py, cellSize * 0.4);
+        // 3D Conical Body
+        const actualY = py - jumpOffset;
+        const grad = ctx.createRadialGradient(
+          px - 3,
+          actualY - 3,
+          2,
+          px,
+          actualY,
+          cellSize * 0.4
+        );
         grad.addColorStop(0, '#ffffff');
         grad.addColorStop(0.35, BOARD_COLORS[token.color].light);
         grad.addColorStop(1, BOARD_COLORS[token.color].dark);
 
         ctx.beginPath();
-        ctx.arc(px, py, cellSize * 0.38, 0, Math.PI * 2);
+        ctx.arc(px, actualY, cellSize * 0.38, 0, Math.PI * 2);
         ctx.fillStyle = grad;
         ctx.fill();
         ctx.lineWidth = 2;
         ctx.strokeStyle = '#ffffff';
         ctx.stroke();
 
-        // Top glossy crown circle
+        // Top Gloss Specular Highlight
         ctx.beginPath();
-        ctx.arc(px - 2, py - 3, cellSize * 0.14, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.arc(px - 2, actualY - 3, cellSize * 0.13, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
         ctx.fill();
 
         ctx.restore();
