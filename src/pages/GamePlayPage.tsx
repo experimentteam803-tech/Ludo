@@ -9,12 +9,16 @@ import { LudoEngine } from '../game/rules/ludoEngine';
 export const GamePlayPage: React.FC = () => {
   const { gameState, rollDice, selectToken, quitGame } = useGameStore();
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
-  const [isMuted, setIsMuted] = useState(audioManager.isMuted);
-  const [animatingToken, setAnimatingToken] = useState<{ playerId: string; tokenId: number; stepPos: number } | null>(null);
+  const [isMuted, setIsMuted] = useState(audioManager.isSfxMuted);
+  const [animatingToken, setAnimatingToken] = useState<{
+    playerId: string;
+    tokenId: number;
+    stepPos: number;
+    arcHeight: number;
+  } | null>(null);
 
-  // Background Music Controller
   useEffect(() => {
-    audioManager.startBGM();
+    audioManager.playBGM('game');
     return () => {
       audioManager.stopBGM();
     };
@@ -24,7 +28,7 @@ export const GamePlayPage: React.FC = () => {
 
   const activePlayer = gameState.players[gameState.activePlayerIndex];
 
-  // Step-by-Step Animated Token Hop
+  // Parabolic step-by-step movement coordination
   const handleAnimatedMove = (tokenId: number) => {
     if (!gameState || !gameState.diceValue) return;
 
@@ -34,22 +38,27 @@ export const GamePlayPage: React.FC = () => {
     const dice = gameState.diceValue;
 
     if (token.stepPosition === -1) {
-      // Coming out of yard (single hop with fanfare)
       audioManager.playTokenExit();
-      setAnimatingToken({ playerId: activePlayer.id, tokenId, stepPos: 0 });
+      setAnimatingToken({ playerId: activePlayer.id, tokenId, stepPos: 0, arcHeight: 8 });
       setTimeout(() => {
         setAnimatingToken(null);
         selectToken(tokenId);
-      }, 250);
+      }, 220);
     } else {
-      // Step-by-step hopping along path
       const startPos = token.stepPosition;
       let currentHop = 0;
 
       const hopInterval = setInterval(() => {
         currentHop++;
         const intermediatePos = startPos + currentHop;
-        setAnimatingToken({ playerId: activePlayer.id, tokenId, stepPos: intermediatePos });
+        const arc = Math.sin((currentHop / dice) * Math.PI) * 12;
+
+        setAnimatingToken({
+          playerId: activePlayer.id,
+          tokenId,
+          stepPos: intermediatePos,
+          arcHeight: arc,
+        });
         audioManager.playStepHop(currentHop);
 
         if (currentHop >= dice) {
@@ -57,13 +66,13 @@ export const GamePlayPage: React.FC = () => {
           setTimeout(() => {
             setAnimatingToken(null);
             selectToken(tokenId);
-          }, 100);
+          }, 90);
         }
-      }, 120); // 120ms smooth jump per cell
+      }, 130);
     }
   };
 
-  // Bot Auto Player Action
+  // Automated AI Turn Action
   useEffect(() => {
     if (gameState.isGameOver) return;
     const current = gameState.players[gameState.activePlayerIndex];
@@ -86,19 +95,22 @@ export const GamePlayPage: React.FC = () => {
 
   return (
     <div className="flex flex-col justify-between min-h-screen p-2 text-white select-none">
-      {/* Top Header Bar */}
+      {/* Top Header */}
       <div className="flex items-center justify-between px-3 py-1.5 bg-[#0e1b36] rounded-xl border border-yellow-500/40 shadow-lg">
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
-              audioManager.isMuted = !isMuted;
+              audioManager.isSfxMuted = !isMuted;
+              audioManager.isMusicMuted = !isMuted;
               setIsMuted(!isMuted);
             }}
             className="p-1 text-yellow-400"
           >
             {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
           </button>
-          <span className="text-xs font-black text-yellow-400 uppercase tracking-wider">{gameState.mode}</span>
+          <span className="text-xs font-black text-yellow-400 uppercase tracking-wider">
+            {gameState.mode}
+          </span>
         </div>
 
         <button
@@ -109,14 +121,14 @@ export const GamePlayPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Top Opponent Profile Area */}
+      {/* Opponent Profile Badges */}
       <div className="flex justify-between items-center px-4 py-1">
         {gameState.players.map((p, idx) => (
           <div
             key={p.id}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full border shadow ${
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full border shadow transition-all ${
               idx === gameState.activePlayerIndex
-                ? 'border-yellow-400 bg-yellow-400/20'
+                ? 'border-yellow-400 bg-yellow-400/20 scale-105'
                 : 'border-gray-700 bg-gray-900/50'
             }`}
           >
@@ -126,7 +138,7 @@ export const GamePlayPage: React.FC = () => {
         ))}
       </div>
 
-      {/* Main Board with Canvas Graphics */}
+      {/* Main Board */}
       <LudoCanvasBoard
         gameState={gameState}
         onSelectToken={handleAnimatedMove}
@@ -150,7 +162,7 @@ export const GamePlayPage: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-[#0e1b36] border-2 border-yellow-400 rounded-2xl p-5 text-center max-w-xs w-full shadow-2xl">
             <h3 className="text-base font-black text-yellow-400 mb-2">Quit Game?</h3>
-            <p className="text-xs text-gray-300 mb-4">Are you sure you want to exit to lobby?</p>
+            <p className="text-xs text-gray-300 mb-4">Leaving now will forfeit this match.</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowQuitConfirm(false)}
