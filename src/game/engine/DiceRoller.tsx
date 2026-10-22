@@ -10,7 +10,14 @@ interface Props {
   isTurn: boolean;
 }
 
-export const DiceRoller: React.FC<Props> = ({ value, canRoll, onRoll, playerName, avatarUrl, isTurn }) => {
+export const DiceRoller: React.FC<Props> = ({
+  value,
+  canRoll,
+  onRoll,
+  playerName,
+  avatarUrl,
+  isTurn,
+}) => {
   const [isRolling, setIsRolling] = useState(false);
 
   const handleRoll = () => {
@@ -49,25 +56,34 @@ export const DiceRoller: React.FC<Props> = ({ value, canRoll, onRoll, playerName
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2.5">
       {/* Player Avatar */}
       <div className="flex flex-col items-center">
-        <div className={`relative w-12 h-12 rounded-xl border-2 overflow-hidden shadow-md ${isTurn ? 'border-yellow-400' : 'border-gray-600'}`}>
+        <div
+          className={`relative w-12 h-12 rounded-xl border-2 overflow-hidden shadow-md transition-all ${
+            isTurn ? 'border-yellow-400 scale-105 shadow-yellow-400/40' : 'border-gray-600'
+          }`}
+        >
           <img
-            src={avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80'}
+            src={
+              avatarUrl ||
+              'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80'
+            }
             alt="User"
             className="w-full h-full object-cover"
           />
         </div>
-        <span className="text-[11px] font-bold text-gray-200 mt-0.5 truncate max-w-[60px]">{playerName}</span>
+        <span className="text-[11px] font-bold text-gray-200 mt-0.5 truncate max-w-[65px]">
+          {playerName}
+        </span>
       </div>
 
-      {/* Yellow Active Turn Pointer Arrow from Video */}
+      {/* Pulsing Turn Indicator */}
       {isTurn && (
         <span className="text-yellow-400 text-sm font-black animate-pulse">▶</span>
       )}
 
-      {/* "Go" Dice Roller Box */}
+      {/* 3D Dice Box */}
       <button
         onClick={handleRoll}
         disabled={!canRoll}
@@ -78,7 +94,7 @@ export const DiceRoller: React.FC<Props> = ({ value, canRoll, onRoll, playerName
         } ${isRolling ? 'rotate-180 scale-95 duration-300' : ''}`}
       >
         {isRolling ? (
-          <span className="text-xs font-black animate-spin">🎲</span>
+          <span className="text-sm font-black animate-spin">🎲</span>
         ) : value ? (
           renderPips(value)
         ) : (
