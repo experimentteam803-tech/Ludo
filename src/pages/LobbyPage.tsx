@@ -1,15 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Trophy, Users, Dices, PlayCircle, MessageSquare, Send, ShieldCheck, Wallet } from 'lucide-react';
 import { TopProfileBar } from '../components/lobby/TopProfileBar';
 import { PromoBanner } from '../components/lobby/PromoBanner';
 import { GameModeCard } from '../components/lobby/GameModeCard';
+import { BottomNav, NavTab } from '../components/lobby/BottomNav';
 import { NoticeModal } from '../components/modals/NoticeModal';
 import { BetSelectionModal } from '../components/modals/BetSelectionModal';
 import { PassAndPlaySetupModal } from '../components/modals/PassAndPlaySetupModal';
 import { StoreModal } from '../components/modals/StoreModal';
 import { SettingsModal } from '../components/modals/SettingsModal';
 import { RewardedAdModal } from '../components/modals/RewardedAdModal';
+import { RewardsModal } from '../components/modals/RewardsModal';
+import { ProfileModal } from '../components/modals/ProfileModal';
+import { WalletModal } from '../components/modals/WalletModal';
 import { GameMode } from '../types/game';
+import { audioManager } from '../services/audio/audioManager';
 
 interface Props {
   onStartGame: (mode: GameMode, players: any[], fee?: number, prize?: number) => void;
@@ -17,6 +22,7 @@ interface Props {
 }
 
 export const LobbyPage: React.FC<Props> = ({ onStartGame, onOpenAdmin }) => {
+  const [activeTab, setActiveTab] = useState<NavTab>('HOME');
   const [showNotice, setShowNotice] = useState(true);
   const [showStore, setShowStore] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -24,11 +30,15 @@ export const LobbyPage: React.FC<Props> = ({ onStartGame, onOpenAdmin }) => {
   const [selectedBetMode, setSelectedBetMode] = useState<GameMode | null>(null);
   const [showPassPlay, setShowPassPlay] = useState(false);
 
+  useEffect(() => {
+    audioManager.playBGM('home');
+  }, []);
+
   return (
-    <div className="flex flex-col min-h-screen bg-[#070d18] text-white select-none pb-6">
+    <div className="flex flex-col min-h-screen text-white select-none pb-20">
       {/* Top Profile Header */}
       <TopProfileBar
-        onOpenWallet={() => setShowStore(true)}
+        onOpenWallet={() => setActiveTab('WALLET')}
         onOpenStore={() => setShowStore(true)}
         onOpenSettings={() => setShowSettings(true)}
       />
@@ -36,32 +46,32 @@ export const LobbyPage: React.FC<Props> = ({ onStartGame, onOpenAdmin }) => {
       {/* Marquee Ticker */}
       <div className="bg-[#0b172a] border-y border-yellow-500/20 py-1 px-3 overflow-hidden whitespace-nowrap">
         <p className="text-[11px] font-semibold text-yellow-400 animate-pulse">
-          ★ Welcome to Reddy Anna Ludo | Complete 2 Rewarded Ads to Play Free | Virtual Coins Only ★
+          ★ Welcome to Reddy Anna Ludo | Watch 2 Ads to Play Free | Virtual Coins Only ★
         </p>
       </div>
 
-      {/* Dynamic Promo Banner */}
+      {/* Promotional Carousel */}
       <PromoBanner onClaimFree={() => setShowAdModal(true)} />
 
-      {/* Quick Action Bar */}
+      {/* Quick Action Buttons */}
       <div className="flex gap-2 px-3 pt-3">
         <button
           onClick={() => setShowAdModal(true)}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-800 border border-blue-400/40 text-xs font-bold"
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-800 border border-blue-400/40 text-xs font-bold shadow-md"
         >
           <PlayCircle className="w-4 h-4 text-yellow-400" />
           Free Unlock
         </button>
         <button
           onClick={() => setShowStore(true)}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-600 border border-yellow-300 text-xs font-bold text-gray-950"
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-600 border border-yellow-300 text-xs font-bold text-gray-950 shadow-md"
         >
           <Wallet className="w-4 h-4 text-gray-950" />
           Virtual Coins
         </button>
       </div>
 
-      {/* 4 Primary Game Mode Cards */}
+      {/* Primary 4-Game Mode Grid */}
       <main className="grid grid-cols-2 gap-3 p-3 mt-1">
         <GameModeCard
           title="Classic"
@@ -91,7 +101,7 @@ export const LobbyPage: React.FC<Props> = ({ onStartGame, onOpenAdmin }) => {
         />
       </main>
 
-      {/* Support / Telegram / WhatsApp Footer */}
+      {/* Community & Support */}
       <footer className="mt-auto px-4 flex flex-col items-center gap-2">
         <span className="text-[11px] text-gray-400 font-medium">Need Help? Connect With Us</span>
         <div className="flex gap-4">
@@ -120,11 +130,17 @@ export const LobbyPage: React.FC<Props> = ({ onStartGame, onOpenAdmin }) => {
         </button>
       </footer>
 
-      {/* Modals */}
+      {/* 5-Tab Navigation Bar */}
+      <BottomNav activeTab={activeTab} onChangeTab={setActiveTab} />
+
+      {/* Modals & Dialogs */}
       {showNotice && <NoticeModal onClose={() => setShowNotice(false)} />}
       {showStore && <StoreModal onClose={() => setShowStore(false)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
       {showAdModal && <RewardedAdModal onClose={() => setShowAdModal(false)} />}
+      {activeTab === 'REWARDS' && <RewardsModal onClose={() => setActiveTab('HOME')} />}
+      {activeTab === 'WALLET' && <WalletModal onClose={() => setActiveTab('HOME')} />}
+      {activeTab === 'PROFILE' && <ProfileModal onClose={() => setActiveTab('HOME')} />}
       {selectedBetMode && (
         <BetSelectionModal
           mode={selectedBetMode}
